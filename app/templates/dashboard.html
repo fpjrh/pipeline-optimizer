@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pipeline Optimizer</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+</head>
+<body>
+    <header>
+        <div class="container">
+            <h1>Pipeline Optimizer</h1>
+            <p>GitHub Actions Cost & Performance Analytics</p>
+        </div>
+    </header>
+
+    <div class="container">
+        <div class="controls">
+            <label for="repoFilter">Repository:</label>
+            <select id="repoFilter">
+                <option value="">All Repositories</option>
+            </select>
+
+            <label for="daysFilter">Period:</label>
+            <select id="daysFilter">
+                <option value="7">Last 7 Days</option>
+                <option value="14">Last 14 Days</option>
+                <option value="30" selected>Last 30 Days</option>
+                <option value="60">Last 60 Days</option>
+                <option value="90">Last 90 Days</option>
+            </select>
+
+            <button id="collectBtn">Collect Data</button>
+            <button id="darkModeToggle" class="theme-toggle" title="Toggle dark mode">&#127769;</button>
+        </div>
+
+        <!-- Tab Navigation -->
+        <div class="tabs">
+            <button class="tab-button active" data-tab="overview">Overview</button>
+            <button class="tab-button" data-tab="llm-usage">LLM Usage</button>
+            <button class="tab-button" data-tab="pipelines">Pipelines</button>
+            <button class="tab-button" data-tab="recommendations">Recommendations</button>
+        </div>
+
+        <!-- Tab: Overview -->
+        <div class="tab-content active" id="tab-overview">
+            <div class="metrics-grid">
+                <div class="metric-card">
+                    <h3>Total Runs</h3>
+                    <div class="value" id="total-runs">-</div>
+                    <div class="label">Pipeline Executions</div>
+                </div>
+                <div class="metric-card">
+                    <h3>Success Rate</h3>
+                    <div class="value" id="success-rate">-</div>
+                    <div class="label">Percentage</div>
+                </div>
+                <div class="metric-card">
+                    <h3>Avg Duration</h3>
+                    <div class="value" id="avg-duration">-</div>
+                    <div class="label">Seconds</div>
+                </div>
+                <div class="metric-card cost-card">
+                    <h3>Total Cost</h3>
+                    <div class="value" id="total-cost">-</div>
+                    <div class="label">Compute + LLM</div>
+                </div>
+                <div class="metric-card">
+                    <h3>Compute Cost</h3>
+                    <div class="value" id="compute-cost">-</div>
+                    <div class="label">Runner Minutes</div>
+                </div>
+                <div class="metric-card">
+                    <h3>LLM Cost</h3>
+                    <div class="value" id="llm-cost">-</div>
+                    <div class="label">Token Usage</div>
+                </div>
+                <div class="metric-card">
+                    <h3>LLM Calls</h3>
+                    <div class="value" id="llm-calls">-</div>
+                    <div class="label">API Requests</div>
+                </div>
+                <div class="metric-card">
+                    <h3>Total Tokens</h3>
+                    <div class="value" id="total-tokens">-</div>
+                    <div class="label">Input + Output</div>
+                </div>
+            </div>
+
+            <div class="charts-grid">
+                <div class="chart-card">
+                    <h2>Cost Over Time</h2>
+                    <div class="chart-container">
+                        <canvas id="costTrendChart"></canvas>
+                    </div>
+                </div>
+                <div class="chart-card">
+                    <h2>Cost Breakdown</h2>
+                    <div class="chart-container small">
+                        <canvas id="costBreakdownChart"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <div class="charts-grid">
+                <div class="chart-card">
+                    <h2>Pipeline Duration Trend</h2>
+                    <div class="chart-container">
+                        <canvas id="durationTrendChart"></canvas>
+                    </div>
+                </div>
+                <div class="chart-card">
+                    <h2>Top Workflows by Cost</h2>
+                    <div class="chart-container">
+                        <canvas id="topWorkflowsChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tab: LLM Usage -->
+        <div class="tab-content" id="tab-llm-usage">
+            <div class="metrics-grid">
+                <div class="metric-card">
+                    <h3>Total LLM Calls</h3>
+                    <div class="value" id="llm-total-calls">-</div>
+                    <div class="label">API Requests</div>
+                </div>
+                <div class="metric-card">
+                    <h3>Total Tokens</h3>
+                    <div class="value" id="llm-total-tokens">-</div>
+                    <div class="label">Input + Output</div>
+                </div>
+                <div class="metric-card cost-card">
+                    <h3>Total LLM Cost</h3>
+                    <div class="value" id="llm-total-cost">-</div>
+                    <div class="label">All Providers</div>
+                </div>
+            </div>
+
+            <div class="charts-grid">
+                <div class="chart-card">
+                    <h2>Cost by Model</h2>
+                    <div class="chart-container">
+                        <canvas id="costByModelChart"></canvas>
+                    </div>
+                </div>
+                <div class="chart-card">
+                    <h2>Cost by Purpose</h2>
+                    <div class="chart-container small">
+                        <canvas id="costByPurposeChart"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <div class="table-card">
+                <h2>Model Usage Breakdown</h2>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Model</th>
+                            <th>Calls</th>
+                            <th>Tokens</th>
+                            <th>Avg Latency</th>
+                            <th>Cost</th>
+                        </tr>
+                    </thead>
+                    <tbody id="modelTableBody">
+                        <tr><td colspan="5" class="loading">Loading...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Tab: Pipelines -->
+        <div class="tab-content" id="tab-pipelines">
+            <div class="table-card">
+                <h2>Top Workflows</h2>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Workflow</th>
+                            <th>Runs</th>
+                            <th>Avg Duration</th>
+                            <th>Success Rate</th>
+                            <th>Total Cost</th>
+                        </tr>
+                    </thead>
+                    <tbody id="workflowTableBody">
+                        <tr><td colspan="5" class="loading">Loading...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="table-card">
+                <h2>Recent Runs</h2>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Workflow</th>
+                            <th>Repo</th>
+                            <th>Result</th>
+                            <th>Trigger</th>
+                            <th>Duration</th>
+                            <th>Cost</th>
+                            <th>Started</th>
+                        </tr>
+                    </thead>
+                    <tbody id="runsTableBody">
+                        <tr><td colspan="7" class="loading">Loading...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Tab: Recommendations -->
+        <div class="tab-content" id="tab-recommendations">
+            <div class="table-card">
+                <h2>Optimization Recommendations</h2>
+                <p class="help-text">AI-generated suggestions to optimize your pipelines for speed and cost.</p>
+                <div id="recommendationsList">
+                    <p class="loading">Loading recommendations...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="/static/js/dashboard.js"></script>
+</body>
+</html>
